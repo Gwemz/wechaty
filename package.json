@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "wechaty": "^0.26.1",
+    "wechaty-puppet-puppeteer": "^0.16.1"
+  }
+}
