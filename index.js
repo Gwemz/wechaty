@@ -1,39 +1,101 @@
-const { Wechaty } = require('wechaty')
+const {Wechaty} = require('wechaty');
+const schedule = require('./schedule');
+const config = require('./config/default.json');
 
-Wechaty.instance() // Singleton
-.on('scan', (url, code) => console.log(`Scan QR Code to login: ${code}\n${url}`))
-.on('login',       user => console.log(`User ${user} logined`))
-// .on('message',  message => console.log(`Message: ${message}`))
-.on('message', async(message) => {
-    const contact = message.from()
-    const content = message.content()
-    const room = message.room()
-    console.log(contact);
-    console.log(content);
-    console.log(room);
-    if (room) {
-        console.log(`Room: ${room.topic()} Contact: ${contact.name()} Content: ${content}`)
-    } else {
-        console.log(`Contact: ${contact.name()} Content: ${content}`)
+const toAlais = config.toName;
+
+const bot = new Wechaty();
+
+function onScan (qrcode, status) {
+    require('qrcode-terminal').generate(qrcode); // 在console端显示二维码
+    const qrcodeImageUrl = [
+        'https://api.qrserver.com/v1/create-qr-code/?data=',
+        encodeURIComponent(qrcode),
+    ].join('');
+    console.log(qrcodeImageUrl)
+}
+
+// 登录
+async function onLogin (user) {
+    console.log(`贴心小助理${user}登录了`);
+
+    //remindEat();
+
+    //登陆后创建定时任务
+    // schedule.setSchedule('perday','0 0 12,19 * * *',()=>{
+        console.log('你的贴心小助理开始工作啦！')
+        remindEat();
+    // })
+}
+
+async function onMessage(msg){
+    let from = msg.from();
+    let text = msg.text();
+    let room = msg.room();
+
+    if(room){
+        return;
     }
-    
-    // 不处理自己发的消息
-    // if (message.self()) {
-    //     return
-    // }
-    // id: @@fad86837bcb1d03ecf917d40edb4be05ac6ef9dc1b4965d9ca29387ffa6ccd90
-    // console.log(contact.payload.id,contact.payload.name);
-    // console.log(room.id,room.payload.topic)
-    // if(room.payload.topic == 'Family'){
-    //     message.say('hello,I am wechaty');
-    // }
-    // 回复消息
-    // if(contact.payload.name == '国外噩梦'){
-    //     message.say('hello,I am wechaty');
-    //     // message.say('你好，这是微信机器人回复的消息');
-    //     // if (/JavaScript|Js|js/.test(content)) {
-    //     //     message.say('关注公众号 JavaScript之禅')
-    //     // }
-    // }
-})
-.start()
+
+    if(from.self()){
+        return;
+    }
+
+    let fromAlias = await from.alias();
+    if(text === '我吃过了' && fromAlias === toAlais){
+        schedule.cancelSchedule('fiveMins');
+        sendGetMessage();
+    }
+
+}
+
+async function sendGetMessage(){
+
+    let contact = await bot.Contact.find({alias:toAlais});
+    let text = '哦, 那我不提醒了';
+    console.log(contact);
+    contact.say(text)
+
+}
+
+async function sendRemindText(){
+    // console.log(bot);
+    let contact = await bot.Contact.find({name:toAlais});
+    // console.log(toAlais,'-----------',getNotice(),contact);
+    let message = getNotice();
+
+    contact.say(message);
+
+    console.log('假装我发了一条微信')
+
+}
+
+async function remindEat(){
+    schedule.setSchedule('fiveMins','*/20 * * * * *',sendRemindText)
+    // sendRemindText()
+}
+
+async function onLogOut(){
+
+}
+
+
+function getNotice(){
+
+    let date = new Date();
+
+    let dateStr = date.getHours() + ':' + date.getMinutes() + ':' + date.getMinutes();
+
+    let notice = toAlais +' 我是个微信机器人,现在是北京时间 ' + dateStr + '<br>我来提醒你吃饭了，如果已经吃了请回复我吃过了，否则每分钟提醒一次直到吃饭了为止';
+
+    return notice;
+
+}
+
+
+bot.on('scan',    onScan);
+bot.on('login',   onLogin);
+// bot.on('logout',  onLogout);
+bot.on('message', onMessage);
+
+bot.start();
