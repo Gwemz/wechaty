@@ -6,7 +6,9 @@
 
 ```
 cnpm install wechaty --save
-cnpm install wechaty-puppet-puppeteer
+cnpm install wechaty-puppet-puppeteer --save  //谷歌浏览器模拟工具
+cnpm install qrcode-terminal --save   //控制台二维码生成工具
+cnpm install node-schedule --save     //定时器库
 ```
 
 执行`node index.js`
